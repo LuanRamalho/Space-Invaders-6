@@ -1,5 +1,3 @@
-# Tutorial: https://youtu.be/o-6pADy5Mdg
-
 import pygame, sys
 from Player import Player
 import Obstacle
@@ -7,7 +5,7 @@ from Alien import Alien, Extra
 from Laser import Laser
 from random import choice, randint
 import os
-
+import json
 
 # File Importing (Changes Directory to Where the File is Saved)
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -16,7 +14,7 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 class Game:
     def __init__(self):
         # Game Window UI and Icon
-        pygame .display.set_caption("Space Invaders")
+        pygame.display.set_caption("Space Invaders")
         pygame_icon = pygame.image.load("../Graphics/Red.png")
         pygame.display.set_icon(pygame_icon)
 
@@ -31,18 +29,22 @@ class Game:
         self.score = 0
         self.font = pygame.font.Font("../Font/Pixeled.ttf", 20)
 
+        # Highscore Setup
+        self.highscore_file = "highscore.json"
+        self.highscore = self.load_highscore()
+
         # Obstacle Setup
         self.shape = Obstacle.shape
         self.block_size = 6
         self.blocks = pygame.sprite.Group()
         self.obstacle_amount = 4
         self.obstacle_x_positions = [num * (screen_width / self.obstacle_amount) for num in range(self.obstacle_amount)]
-        self.create_multiple_obstacles(*self.obstacle_x_positions, x_start = screen_width / 15, y_start = 480)
+        self.create_multiple_obstacles(*self.obstacle_x_positions, x_start=screen_width / 15, y_start=480)
 
         # Alien Setup
         self.aliens = pygame.sprite.Group()
         self.alien_lasers = pygame.sprite.Group()
-        self.alien_setup(rows = 6, cols = 8)
+        self.alien_setup(rows=6, cols=8)
         self.alien_direction = 1
 
         # Extra Alien Setup
@@ -52,11 +54,26 @@ class Game:
         # Audio
         music = pygame.mixer.Sound("../Audio/Music.wav")
         music.set_volume(0.2)
-        music.play(loops = -1)
+        music.play(loops=-1)
         self.laser_sound = pygame.mixer.Sound('../Audio/Laser.wav')
         self.laser_sound.set_volume(0.2)
         self.explosion_sound = pygame.mixer.Sound('../Audio/Explosion.wav')
         self.explosion_sound.set_volume(0.5)
+    def load_highscore(self):
+        if os.path.exists(self.highscore_file):
+            with open(self.highscore_file, 'r') as file:
+                data = json.load(file)
+                return data.get("highscore", 0)
+        return 0
+
+    def save_highscore(self):
+        with open(self.highscore_file, 'w') as file:
+            json.dump({"highscore": self.highscore}, file)
+
+    def update_highscore(self):
+        if self.score > self.highscore:
+            self.highscore = self.score
+            self.save_highscore()
 
     def create_obstacle(self, x_start, y_start, offset_x):
         for row_index, row in enumerate(self.shape):
@@ -111,7 +128,6 @@ class Game:
             self.extra_spawn_time = randint(400, 800)
 
     def collision_checks(self):
-
         # Player Lasers
         if self.player.sprite.lasers:
             for laser in self.player.sprite.lasers:
@@ -134,7 +150,7 @@ class Game:
                     self.score += 500
                     laser.kill()
                     self.explosion_sound.play()
-        
+
         # Alien Lasers
         if self.alien_lasers:
             for laser in self.alien_lasers:
@@ -147,7 +163,7 @@ class Game:
                     laser.kill()
                     screen.fill((122, 0, 0))
                     self.lives -= 1
-                    
+
         # Aliens
         if self.aliens:
             for alien in self.aliens:
@@ -156,6 +172,7 @@ class Game:
 
                 # Player Collisions
                 if pygame.sprite.spritecollide(alien, self.player, True):
+                    self.update_highscore()
                     pygame.quit()
                     sys.exit()
 
@@ -165,13 +182,19 @@ class Game:
             screen.blit(self.live_surf, (x, 8))
 
         if self.lives <= 0:
+            self.update_highscore()
             pygame.quit()
             sys.exit()
 
+
     def display_score(self):
         score_surf = self.font.render(f"Score: {self.score}", False, "White")
-        score_rect = score_surf.get_rect(topleft = (10, -10))
+        score_rect = score_surf.get_rect(topleft=(10, -10))
         screen.blit(score_surf, score_rect)
+
+        highscore_surf = self.font.render(f"High Score: {self.highscore}", False, "White")
+        highscore_rect = highscore_surf.get_rect(topleft=(10, 20))
+        screen.blit(highscore_surf, highscore_rect)
 
     def victory_message(self):
         if not self.aliens.sprites():
@@ -234,6 +257,7 @@ if __name__ == "__main__":
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                game.update_highscore()
                 pygame.quit()
                 sys.exit()
             if event.type == ALIENLASER:
