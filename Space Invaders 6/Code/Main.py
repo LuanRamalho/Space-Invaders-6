@@ -44,8 +44,9 @@ class Game:
         # Alien Setup
         self.aliens = pygame.sprite.Group()
         self.alien_lasers = pygame.sprite.Group()
-        self.alien_setup(rows=6, cols=8)
         self.alien_direction = 1
+        self.level = 1  # Start at level 1
+        self.alien_setup(rows=6, cols=8)
 
         # Extra Alien Setup
         self.extra = pygame.sprite.GroupSingle()
@@ -59,6 +60,7 @@ class Game:
         self.laser_sound.set_volume(0.2)
         self.explosion_sound = pygame.mixer.Sound('../Audio/Explosion.wav')
         self.explosion_sound.set_volume(0.5)
+        
     def load_highscore(self):
         if os.path.exists(self.highscore_file):
             with open(self.highscore_file, 'r') as file:
@@ -197,10 +199,16 @@ class Game:
         screen.blit(highscore_surf, highscore_rect)
 
     def victory_message(self):
-        if not self.aliens.sprites():
-            victory_surf = self.font.render("You Won!", False, "White")
-            victory_rect = victory_surf.get_rect(center = (screen_width / 2, screen_height/ 2))
-            screen.blit(victory_surf, victory_rect)
+        if not self.aliens.sprites():  # Check if all aliens are defeated
+            self.level += 1  # Increment the level
+            self.alien_setup(rows=6, cols=8)  # Recreate the aliens for the next level
+
+    def game_over(self):
+        if self.lives <= 0:
+            self.update_highscore()
+            pygame.quit()
+            sys.exit()
+      
 
     def run(self):
         # Draw and Update All Sprite Groups
@@ -222,6 +230,7 @@ class Game:
         self.display_lives()
         self.display_score()
         self.victory_message()
+        self.game_over()
 
 
 class CRT:
